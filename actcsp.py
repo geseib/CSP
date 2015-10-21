@@ -111,25 +111,32 @@ def down_service(service):
 
 #Change memory, CPU count, and iso depnding on the OS to load to configure a new service
 def get_service_profile ():
-    if options.atype=='CSR':
+    profile=options.atype
+    if profile.upper()=='CSR':
         iso="csr1000v-universalk9.03.16.00.S.155-3.S-ext.iso"
         memory=int(2048)
         cpus=int(1)
         return (iso,memory,cpus)
-    elif options.atype=='NXOS':
+    elif profile.upper()=='NXOS':
         iso="nxosv-final.7.0.3.I2.1.qcow2"
         memory=int(4096)
         cpus=int(1)
         return (iso,memory,cpus)
-    elif options.atype=='XR':
+    elif profile.upper()=='XR':
         iso="iosxrv-k9-demo-5.1.2.qcow2"
         memory=int(4096)
         cpus=int(1)
         return (iso,memory,cpus)
+    elif profile.upper()=='LINUX':
+        iso="ubuntu-14.04-server-cloudimg-amd64-disk1.img"
+        memory=int(4096)
+        cpus=int(1)
+        return (iso,memory,cpus)
+    
     else:
         print "Unkown image type, NOTHING Created"
         exit()
-
+#
 #Adjust the VNIC configuration. This does not work
 def set_vnic():
     nic=0
@@ -239,7 +246,7 @@ if options.adelete:
                     delete_service(str(options.adelete)+str(servicenumber))
                 else:
                     print "No service "+str(service)+str(servicenumber)+" to bring delete."
-                    servicenumber += 1
+                servicenumber += 1
         elif service in plist:
             delete_service(service)
         elif service not in plist:
@@ -247,6 +254,7 @@ if options.adelete:
             print " NO ACTION TAKEN"
     else:
         print ("Nothing Deleted. That was close!")
+        
 #CHECK FOR CREATE ARG and if single, multiple (i.e. router1,router2,router3 using the -n arg)   
 if options.acreate:                
     if options.anumber:
