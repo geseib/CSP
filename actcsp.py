@@ -46,6 +46,7 @@ parser.add_option("-l","--list", action="store_true", dest="alist", help="list s
 parser.add_option("-t","--type", dest="atype", help="pick type of service to deploy: CSR XR,or NXOS, default is %default", default="CSR")
 parser.add_option("-c","--create", dest="acreate", help="create new service with given name")
 parser.add_option("-n","--number", dest="anumber", help="Number of copies of service to create. appends to name used for -c")
+parser.add_option("-S","--status", action='store_true', dest="astatus", help="General Info on the CSP-2100 Server")
 
 
 (options, args) = parser.parse_args()
@@ -90,10 +91,24 @@ def get_service_status(service):
 def show_resources():
     csp_service_url="https://"+csp_host+"/api/running/resources/resource/csp-2100"    
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
-    print status.text
+    jstatus=json.loads(status.text)
+    server_ip=jstatus['resource']['ip_address']
+    hostname=jstatus['resource']['host_name']
+    memory_total=jstatus['resource']['ram_total_mb']
+    memory_avail=jstatus['resource']['ram_total_mb']-jstatus['resource']['ram_used_mb']
+    cpus_total=jstatus['resource']['num_cpus_total']
+    cpus_avail=jstatus['resource']['num_cpus_total']-jstatus['resource']['num_cpus_used']
+    total_services=jstatus['resource']['num_service']
+    print "Server: "+hostname+" @ "+server_ip
+    print "=================================="
+    print "Memory Total: "+str(memory_total)+"MB\tMemory Free: "+str(memory_avail)+"MB"
+    print "Cores Total: "+str(cpus_total)+"\tCores Free: "+str(cpus_avail)
+    print str(total_services) +" Services currently configured"
     
 #Display the List of services on the CSP and the power status
 def list_services():
+    show_resources()
+    print "\n"
     print "SERVICE NAME    -> POWER ON/OFF"
     print "==============================="
     for each in plist:
@@ -101,23 +116,23 @@ def list_services():
             print str(each)+"\t\t->\t"+get_service_status(each)
         else:
             print str(each)+"\t->\t"+get_service_status(each)
-    print "\n"+str(len(plist)) +" Services currently configured"
+    print "\n"+str(len(plist)) +" Services currently listed"
     show_resources()
         
 #power up a service        
 def up_service(service):
-    print "bringing up router "+str(service)
+    print "bringing up service "+str(service)
     payload = {"service": {"power": "on", }}
     csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
     upping=requests.patch(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
-
+    print "DONE \n"
 #Power down a service
 def down_service(service):
-    print "bringing down router "+str(service)
+    print "bringing down service "+str(service)
     payload = {"service": {"power": "off", }}
     csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
     downing=requests.patch(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
-
+    print "DONE \n"
 #Change memory, CPU count, and iso depnding on the OS to load to configure a new service
 def get_service_profile ():
     profile=options.atype
@@ -176,7 +191,7 @@ def create_service(service):
         #print payload
         print "Creating Service: "+str(service)
         create = requests.post(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
-        print "Service "+service+" is now "+ str(get_service_status(service))+"\r\n"
+        print "Service "+service+" is now powered "+ str(get_service_status(service))+"\r\n"
         return
     else:
         print "Service "+service+" already exists, NOTHING Created"
@@ -189,7 +204,7 @@ def delete_service (service):
     downing=requests.patch(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
     sleep(2)
     deleting=requests.delete(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
-    print "done\n"
+    print "DONE\n"
     return
 
 
@@ -274,4 +289,7 @@ if options.acreate:
             servicenumber += 1
     else:
         create_service(str(options.acreate))
+#General Server Info
+if options.astatus:
+    show_resources()
     
