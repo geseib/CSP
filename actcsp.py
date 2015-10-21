@@ -46,7 +46,7 @@ parser.add_option("-l","--list", action="store_true", dest="alist", help="list s
 parser.add_option("-t","--type", dest="atype", help="pick type of service to deploy: CSR XR,or NXOS, default is %default", default="CSR")
 parser.add_option("-c","--create", dest="acreate", help="create new service with given name")
 parser.add_option("-n","--number", dest="anumber", help="Number of copies of service to create. appends to name used for -c")
-parser.add_option("-S","--status", action='store_true', dest="astatus", help="General Info on the CSP-2100 Server")
+parser.add_option("-S","--status", dest="astatus", help="General Info on the CSP-2100 Server, name of service or use CSP for server")
 
 
 (options, args) = parser.parse_args()
@@ -87,6 +87,49 @@ def get_service_status(service):
     local= jstatus['service']['power']
     return (local)
 
+#Get VNIC Info
+def get_vnics(service):
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/vnics/"    
+    status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
+    jstatus=json.loads(status.text)
+    qty_vnics=len(jstatus['vnics']['vnic'])
+    print "There are "+ str(qty_vnics)+" vnics"
+    print "----------------------------"
+    current_vnic=0
+    while current_vnic < qty_vnics:
+        show_vnic(service, current_vnic)
+        current_vnic+=1
+    
+    
+    
+def show_vnic(service,nic):
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/vnics/vnic/"+str(nic)    
+    status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
+    jstatus=json.loads(status.text)
+    print "\nConfig for vnic: "+str(nic)
+    print "==============================="
+    for each in jstatus['vnic']:
+        if len(each)<7:
+            print str(each)+"\t\t"+str(jstatus['vnic'][str(each)])
+        else:
+            print str(each)+"\t"+str(jstatus['vnic'][str(each)])
+
+
+#Display all info about a service
+def show_service(service):
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
+    status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
+    jstatus=json.loads(status.text)
+    print "Config for Server: "+service
+    print "==============================="
+    for each in jstatus['service']:
+        if str(each)=="vnics":
+            get_vnics(service)
+        elif len(each)<7:
+            print str(each)+"\t\t"+str(jstatus['service'][str(each)])
+        else:
+            print str(each)+"\t"+str(jstatus['service'][str(each)])
+        
 #Display info about resources
 def show_resources():
     csp_service_url="https://"+csp_host+"/api/running/resources/resource/csp-2100"    
@@ -133,6 +176,7 @@ def down_service(service):
     csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
     downing=requests.patch(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
     print "DONE \n"
+
 #Change memory, CPU count, and iso depnding on the OS to load to configure a new service
 def get_service_profile ():
     profile=options.atype
@@ -156,7 +200,6 @@ def get_service_profile ():
         memory=int(4096)
         cpus=int(1)
         return (iso,memory,cpus)
-    
     else:
         print "Unkown image type, NOTHING Created"
         exit()
@@ -183,7 +226,7 @@ def create_service(service):
         csp_service_url="https://"+csp_host+"/api/running/services"
         iso,memory,cpus=get_service_profile()
         internal2=str(options.acreate)
-        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","network_name":"eno1"}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","network_name":"Internal1"}]},}}
+        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":"eno1"}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},}}
         #print payload
         #vnic=set_vnic()
         #print vnic
@@ -291,5 +334,11 @@ if options.acreate:
         create_service(str(options.acreate))
 #General Server Info
 if options.astatus:
-    show_resources()
-    
+    service=options.astatus
+    if service=="CSP":
+        show_resources()
+    elif service in plist:
+        show_service(service)
+    else:
+        print "Cannot find service " +str(service)
+        print " NO ACTION TAKEN"
