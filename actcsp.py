@@ -26,6 +26,7 @@ my_csp_password="admin"
 my_CSR_image="csr1000v-universalk9.03.16.00.S.155-3.S-ext.iso"
 my_NXOS_image="nxosv-final.7.0.3.I2.1.qcow2"
 my_XR_image="iosxrv-k9-demo-5.1.2.qcow2"
+my_LINUX_image="ubuntu-14.04-server-cloudimg-amd64-disk1.qcow2"
 
 #VNIC PROFILE  -not working at the moment
 profile =[('trunk',1, 'internal1'),('trunk',1, 'internal2'),('access',100, 'eno1')]
@@ -85,6 +86,12 @@ def get_service_status(service):
     local= jstatus['service']['power']
     return (local)
 
+#Display info about resources
+def show_resources():
+    csp_service_url="https://"+csp_host+"/api/running/resources/resource/csp-2100"    
+    status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
+    print status.text
+    
 #Display the List of services on the CSP and the power status
 def list_services():
     print "SERVICE NAME    -> POWER ON/OFF"
@@ -94,6 +101,8 @@ def list_services():
             print str(each)+"\t\t->\t"+get_service_status(each)
         else:
             print str(each)+"\t->\t"+get_service_status(each)
+    print "\n"+str(len(plist)) +" Services currently configured"
+    show_resources()
         
 #power up a service        
 def up_service(service):
@@ -113,22 +122,22 @@ def down_service(service):
 def get_service_profile ():
     profile=options.atype
     if profile.upper()=='CSR':
-        iso="csr1000v-universalk9.03.16.00.S.155-3.S-ext.iso"
+        iso=my_CSR_image
         memory=int(2048)
         cpus=int(1)
         return (iso,memory,cpus)
     elif profile.upper()=='NXOS':
-        iso="nxosv-final.7.0.3.I2.1.qcow2"
+        iso=my_NXOS_image
         memory=int(4096)
         cpus=int(1)
         return (iso,memory,cpus)
     elif profile.upper()=='XR':
-        iso="iosxrv-k9-demo-5.1.2.qcow2"
+        iso=my_XR_image
         memory=int(4096)
         cpus=int(1)
         return (iso,memory,cpus)
     elif profile.upper()=='LINUX':
-        iso="ubuntu-14.04-server-cloudimg-amd64-disk1.img"
+        iso=my_LINUX_image
         memory=int(4096)
         cpus=int(1)
         return (iso,memory,cpus)
@@ -159,7 +168,7 @@ def create_service(service):
         csp_service_url="https://"+csp_host+"/api/running/services"
         iso,memory,cpus=get_service_profile()
         internal2=str(options.acreate)
-        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"trunk","tagged":"true","native":"1","network_name":"internal1"}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","network_name": internal2}, {"nic": 2,"type":"access","network_name":"eno1"}]},}}
+        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","network_name":"eno1"}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","network_name":"Internal1"}]},}}
         #print payload
         #vnic=set_vnic()
         #print vnic
