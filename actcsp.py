@@ -21,6 +21,7 @@ from optparse import OptionParser
 my_csp_host="10.1.10.108"
 my_csp_user="admin"
 my_csp_password="admin"
+my_starting_tcp_port=10000
 
 #Images to use - Change these as needed
 my_CSR_image="csr1000v-universalk9.03.16.00.S.155-3.S-ext.iso"
@@ -75,10 +76,10 @@ def get_services():
         for each in jlists['services']['service']:
             plist.append(each['name'])
 
-#Check the power up status of the service
+#Check the power up status of the service def
 def get_service_status(service):
     local=[]
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     if status.status_code == 401:
         print "Invalid Login Credentials to CSP - Exiting"
@@ -87,13 +88,44 @@ def get_service_status(service):
     local= jstatus['service']['power']
     return (local)
 
+#Get SERIAL PORT Info
+def get_serials(service):
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/"    
+    status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
+    jstatus=json.loads(status.text)
+    qty_ports=len(jstatus['serial_ports']['serial_port'])
+    print jstatus
+    print "\n"+service+" has "+ str(qty_ports)+" serial ports"
+    print "----------------------------"
+    current_port=0
+    while current_port < qty_ports:
+        show_serial(service, current_port)
+        current_port+=1
+    print "\n"
+    
+def show_serial(service,port):
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/serial_port/"+str(port)    
+    status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
+    jstatus=json.loads(status.text)
+    print jstatus
+    print "Serial"+str(port)+" @ "+csp_host+":"+str(jstatus['serial_port']['service_port'])
+
+def return_serial(service):
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/serial_port/"+str(0)    
+    status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
+    try:
+        jstatus=json.loads(status.text)
+    except:
+        return 0
+    serial_address=jstatus['serial_port']['service_port']
+    return serial_address            
 #Get VNIC Info
 def get_vnics(service):
     csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/vnics/"    
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     jstatus=json.loads(status.text)
     qty_vnics=len(jstatus['vnics']['vnic'])
-    print "There are "+ str(qty_vnics)+" vnics"
+    print "\n"+service+" has "+ str(qty_vnics)+" vnics"
     print "----------------------------"
     current_vnic=0
     while current_vnic < qty_vnics:
@@ -113,8 +145,8 @@ def show_vnic(service,nic):
             print str(each)+"\t\t"+str(jstatus['vnic'][str(each)])
         else:
             print str(each)+"\t"+str(jstatus['vnic'][str(each)])
-
-
+    print "==============================="
+     
 #Display all info about a service
 def show_service(service):
     csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
@@ -123,7 +155,9 @@ def show_service(service):
     print "Config for Server: "+service
     print "==============================="
     for each in jstatus['service']:
-        if str(each)=="vnics":
+        if str(each)=="serial_ports":
+            get_serials(service)
+        elif str(each)=="vnics":
             get_vnics(service)
         elif len(each)<7:
             print str(each)+"\t\t"+str(jstatus['service'][str(each)])
@@ -152,13 +186,13 @@ def show_resources():
 def list_services():
     show_resources()
     print "\n"
-    print "SERVICE NAME    -> POWER ON/OFF"
-    print "==============================="
+    print "SERVICE NAME    -> POWER ON/OFF    Console Acces"
+    print "====================================================="
     for each in plist:
         if len(each)< 8:
-            print str(each)+"\t\t->\t"+get_service_status(each)
+            print str(each)+"\t\t->\t"+get_service_status(each)+"\t"+"Serial"+str(0)+" @ "+csp_host+":"+str(return_serial(each))
         else:
-            print str(each)+"\t->\t"+get_service_status(each)
+            print str(each)+"\t->\t"+get_service_status(each)+"\t"+"Serial"+str(0)+" @ "+csp_host+":"+str(return_serial(each))
     print "\n"+str(len(plist)) +" Services currently listed"
     show_resources()
         
@@ -218,7 +252,23 @@ def set_vnic():
     
 
     return vnic
-        
+
+#find a free TCP port for the remote serial connection
+def find_free_port():
+    start_port =my_starting_tcp_port
+    current_port = start_port
+    while current_port < start_port+100:
+        port_in_use= False
+        for each in plist:
+            if current_port == return_serial(each):
+                port_in_use=True
+        if port_in_use==True:
+            current_port +=1
+        else:
+            print str(current_port)+" is free"
+            return current_port
+    print " No TCP ports avail in range "+str(start_port)+"-"+str(start_port+100)    
+            
         
 #Create a new service
 def create_service(service):
@@ -226,12 +276,8 @@ def create_service(service):
         csp_service_url="https://"+csp_host+"/api/running/services"
         iso,memory,cpus=get_service_profile()
         internal2=str(options.acreate)
-        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":"eno1"}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},}}
-        #print payload
-        #vnic=set_vnic()
-        #print vnic
-        #payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": vnic,}}
-        #print payload
+        service_port=find_free_port()
+        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":"eno1"}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},"serial_ports": {"serial_port": [{"serial": 0,"serial_type":"telnet","service_port":service_port}]},}}
         print "Creating Service: "+str(service)
         create = requests.post(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
         print "Service "+service+" is now powered "+ str(get_service_status(service))+"\r\n"
