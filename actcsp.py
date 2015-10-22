@@ -22,6 +22,7 @@ my_csp_host="10.90.16.74"
 my_csp_user="admin"
 my_csp_password="admin"
 my_starting_tcp_port=8000
+my_external_nic="enp1s0f0"
 
 #Images to use - Change these as needed
 my_CSR_image="csr1000v-universalk9.03.14.01.S.155-1.S1-std.qcow2"
@@ -71,9 +72,10 @@ def get_services():
         print "No Services on the CSP"
         print "\n"
     else:    
-        plist=[]
+        
         jlists=json.loads(lists.text)
         global plist
+        plist=[]
         for each in jlists['services']['service']:
             plist.append(each['name'])
 
@@ -225,7 +227,7 @@ def get_service_profile ():
         return (iso,memory,cpus)
     elif profile.upper()=='NXOS':
         iso=my_NXOS_image
-        memory=int(4096)
+        memory=int(8192)
         cpus=int(1)
         return (iso,memory,cpus)
     elif profile.upper()=='XR':
@@ -281,7 +283,7 @@ def create_service(service):
         iso,memory,cpus=get_service_profile()
         internal2=str(options.acreate)
         service_port=find_free_port()
-        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":"eno1"}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},"serial_ports":{"serial_port":[{"serial": 0,"serial_type":"telnet","service_port":service_port}]},}}
+        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":my_external_nic}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},"serial_ports":{"serial_port":[{"serial": 0,"serial_type":"telnet","service_port":service_port}]},}}
         print "Creating Service: "+str(service)
         if options.adebug:
         	print "CSP URL: "+csp_service_url
