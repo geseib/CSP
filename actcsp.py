@@ -18,13 +18,13 @@ logging.captureWarnings(True)
 from optparse import OptionParser
 
 #GLOBAL CSP Server VARIABLES. CHANGE THESE AS NEEDED
-my_csp_host="10.1.10.108"
+my_csp_host="10.90.16.74"
 my_csp_user="admin"
 my_csp_password="admin"
-my_starting_tcp_port=10000
+my_starting_tcp_port=8000
 
 #Images to use - Change these as needed
-my_CSR_image="csr1000v-universalk9.03.16.00.S.155-3.S-ext.iso"
+my_CSR_image="csr1000v-universalk9.03.14.01.S.155-1.S1-std.qcow2"
 my_NXOS_image="nxosv-final.7.0.3.I2.1.qcow2"
 my_XR_image="iosxrv-k9-demo-5.1.2.qcow2"
 my_LINUX_image="ubuntu-14.04-server-cloudimg-amd64-disk1.qcow2"
@@ -48,7 +48,7 @@ parser.add_option("-t","--type", dest="atype", help="pick type of service to dep
 parser.add_option("-c","--create", dest="acreate", help="create new service with given name")
 parser.add_option("-n","--number", dest="anumber", help="Number of copies of service to create. appends to name used for -c")
 parser.add_option("-S","--status", dest="astatus", help="General Info on the CSP-2100 Server, name of service or use CSP for server")
-
+parser.add_option("-v","--debug", action="store_true", dest="adebug", help="verbose dubuging")
 
 (options, args) = parser.parse_args()
 
@@ -71,6 +71,7 @@ def get_services():
         print "No Services on the CSP"
         print "\n"
     else:    
+        plist=[]
         jlists=json.loads(lists.text)
         global plist
         for each in jlists['services']['service']:
@@ -94,7 +95,8 @@ def get_serials(service):
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     jstatus=json.loads(status.text)
     qty_ports=len(jstatus['serial_ports']['serial_port'])
-    print jstatus
+    if option.adebug:
+        print jstatus
     print "\n"+service+" has "+ str(qty_ports)+" serial ports"
     print "----------------------------"
     current_port=0
@@ -214,6 +216,8 @@ def down_service(service):
 #Change memory, CPU count, and iso depnding on the OS to load to configure a new service
 def get_service_profile ():
     profile=options.atype
+    if options.adebug:
+    	print "Building using profile: "+profile
     if profile.upper()=='CSR':
         iso=my_CSR_image
         memory=int(2048)
@@ -277,10 +281,15 @@ def create_service(service):
         iso,memory,cpus=get_service_profile()
         internal2=str(options.acreate)
         service_port=find_free_port()
-        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":"eno1"}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},"serial_ports": {"serial_port": [{"serial": 0,"serial_type":"telnet","service_port":service_port}]},}}
+        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":"eno1"}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},"serial_ports":{"serial_port":[{"serial": 0,"serial_type":"telnet","service_port":service_port}]},}}
         print "Creating Service: "+str(service)
+        if options.adebug:
+        	print "CSP URL: "+csp_service_url
+        	print "payload: "+str(payload)
         create = requests.post(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
         print "Service "+service+" is now powered "+ str(get_service_status(service))+"\r\n"
+        #refresh plist
+        get_services()
         return
     else:
         print "Service "+service+" already exists, NOTHING Created"
@@ -305,7 +314,8 @@ print"\n"
 
 #get a list of current services on CSP and store in variable plist
 get_services()
-
+if options.adebug:
+    print "Verbose Debuging on"
 if options.alist:
     list_services()
     print "\n"
