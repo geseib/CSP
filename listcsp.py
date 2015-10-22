@@ -18,10 +18,27 @@ logging.captureWarnings(True)
 from optparse import OptionParser
 
 #GLOBAL CSP Server VARIABLES. CHANGE THESE AS NEEDED
-csp_host="10.90.16.74"
-csp_user="admin"
-csp_password="admin"
+my_csp_host="10.90.16.74"
+my_csp_user="admin"
+my_csp_password="admin"
 plist=[]
+
+#Setup what arguments are expected and supported
+usage = "usage: %prog [options]"
+parser= OptionParser(usage=usage)
+parser.add_option("-s","--server", dest="acsp", help="IP address/hostname of the of the CSP", default=my_csp_host)
+parser.add_option("-U","--user", dest="auser", help="User for the of the CSP", default=my_csp_user)
+parser.add_option("-P","--password", dest="apass", help="password for the of the CSP", default=my_csp_password)
+
+
+(options, args) = parser.parse_args()
+
+#Global Variables: DO NOT CHANGE THESE
+csp_host = options.acsp     #This is the CSP server address, pulled from parser section above or the --server arg
+plist=[]                    #This is where the list of Service will be stored
+csp_user = options.auser
+csp_password = options.apass
+
 
 def get_services():
     csp_service_url="https://"+csp_host+"/api/running/services"
