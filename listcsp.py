@@ -1,5 +1,5 @@
 # actcsp.py by George Seib, Cisco Systems
-# multifunction tool for the Cisco CSP 2100
+# list services, their address for serial port, and power state for the Cisco CSP 2100
 #
 
 #requires requests to connect to the CSP using https
