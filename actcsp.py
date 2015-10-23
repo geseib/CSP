@@ -18,14 +18,14 @@ logging.captureWarnings(True)
 from optparse import OptionParser
 
 #GLOBAL CSP Server VARIABLES. CHANGE THESE AS NEEDED
-my_csp_host="10.90.16.74"
+my_csp_host="10.1.10.108"
 my_csp_user="admin"
 my_csp_password="admin"
-my_starting_tcp_port=8000
-my_external_nic="enp1s0f0"
+my_starting_tcp_port=9000
+my_external_port="eno1"
 
 #Images to use - Change these as needed
-my_CSR_image="csr1000v-universalk9.03.14.01.S.155-1.S1-std.qcow2"
+my_CSR_image="csr1000v-universalk9.03.16.00.S.155-3.S-ext.iso"
 my_NXOS_image="nxosv-final.7.0.3.I2.1.qcow2"
 my_XR_image="iosxrv-k9-demo-5.1.2.qcow2"
 my_LINUX_image="ubuntu-14.04-server-cloudimg-amd64-disk1.qcow2"
@@ -227,7 +227,7 @@ def get_service_profile ():
         return (iso,memory,cpus)
     elif profile.upper()=='NXOS':
         iso=my_NXOS_image
-        memory=int(8192)
+        memory=int(4096)
         cpus=int(1)
         return (iso,memory,cpus)
     elif profile.upper()=='XR':
@@ -283,7 +283,7 @@ def create_service(service):
         iso,memory,cpus=get_service_profile()
         internal2=str(options.acreate)
         service_port=find_free_port()
-        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":my_external_nic}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},"serial_ports":{"serial_port":[{"serial": 0,"serial_type":"telnet","service_port":service_port}]},}}
+        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":my_external_port}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},"serial_ports":{"serial_port":[{"serial": 0,"serial_type":"telnet","service_port":service_port}]},}}
         print "Creating Service: "+str(service)
         if options.adebug:
         	print "CSP URL: "+csp_service_url
@@ -370,7 +370,7 @@ if options.adelete:
                 if str(service)+str(servicenumber) in plist:
                     delete_service(str(options.adelete)+str(servicenumber))
                 else:
-                    print "No service "+str(service)+str(servicenumber)+" to bring delete."
+                    print "No service "+str(service)+str(servicenumber)+" to delete. Skipping."
                 servicenumber += 1
         elif service in plist:
             delete_service(service)
@@ -386,6 +386,8 @@ if options.acreate:
         totalservices=int(options.anumber)
         servicenumber = 1
         while servicenumber < totalservices+1:
+            while str(options.acreate)+str(servicenumber) in plist:
+                servicenumber+=1
             create_service(str(options.acreate)+str(servicenumber))
             servicenumber += 1
     else:
