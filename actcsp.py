@@ -111,7 +111,8 @@ def show_serial(service,port):
     csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/serial_port/"+str(port)
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     jstatus=json.loads(status.text)
-    print jstatus
+    if options.adebug:
+        print jstatus
     print "Serial"+str(port)+" @ "+csp_host+":"+str(jstatus['serial_port']['service_port'])
 
 def return_serial(service):
@@ -123,6 +124,7 @@ def return_serial(service):
         return 0
     serial_address=jstatus['serial_port']['service_port']
     return serial_address
+
 #Get VNIC Info
 def get_vnics(service):
     csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/vnics/"
@@ -329,6 +331,16 @@ if options.aup:
     if service.upper() == "ALL":
         for each in plist:
             up_service(each)
+    elif options.anumber:    #if creating a series of Services
+        totalservices=int(options.anumber)    #get the number of Services to create
+        servicenumber = 1 # start the series with 1
+        while servicenumber < totalservices+1:
+            if str(service)+str(servicenumber) in plist:   #Verify Service exists
+                up_service(str(service)+str(servicenumber))
+
+            else:
+                print "No service "+str(service)+str(servicenumber)+" to bring up."
+            servicenumber += 1    #proceed to the next # in the series
     elif service in plist:
         up_service(service)
     elif service not in plist:
@@ -337,19 +349,19 @@ if options.aup:
 #CHECK FOR DOWN ARG and if single, multiple (i.e. router1,router2,router3 using the -n arg), or ALL
 if options.adown:
     service=options.adown
-    if service.upper() == "ALL":
+    if service == "ALL":
         for each in plist:
             down_service(each)
-    elif options.anumber:
-            totalservices=int(options.anumber)
-            servicenumber = 1
+    elif options.anumber:    #if creating a series of Services
+            totalservices=int(options.anumber)    #get the number of Services to create
+            servicenumber = 1 # start the series with 1
             while servicenumber < totalservices+1:
-                if str(service)+str(servicenumber) in plist:
+                if str(service)+str(servicenumber) in plist:   #Verify Service exists
                     down_service(str(service)+str(servicenumber))
 
                 else:
                     print "No service "+str(service)+str(servicenumber)+" to bring down."
-                servicenumber += 1
+                servicenumber += 1    #proceed to the next # in the series
     elif service in plist:
         down_service(service)
     elif service not in plist:
