@@ -67,12 +67,12 @@ def get_services():
     except requests.ConnectionError, e:
         print "Cannot connect to server "+str(csp_host)+", Exiting"
         sys.exit(1)
-        
+
     if lists.text == "":
         print "No Services on the CSP"
         print "\n"
-    else:    
-        
+    else:
+
         jlists=json.loads(lists.text)
         global plist
         plist=[]
@@ -93,11 +93,11 @@ def get_service_status(service):
 
 #Get SERIAL PORT Info
 def get_serials(service):
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/"    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/"
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     jstatus=json.loads(status.text)
     qty_ports=len(jstatus['serial_ports']['serial_port'])
-    if option.adebug:
+    if options.adebug:
         print jstatus
     print "\n"+service+" has "+ str(qty_ports)+" serial ports"
     print "----------------------------"
@@ -106,26 +106,26 @@ def get_serials(service):
         show_serial(service, current_port)
         current_port+=1
     print "\n"
-    
+
 def show_serial(service,port):
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/serial_port/"+str(port)    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/serial_port/"+str(port)
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     jstatus=json.loads(status.text)
     print jstatus
     print "Serial"+str(port)+" @ "+csp_host+":"+str(jstatus['serial_port']['service_port'])
 
 def return_serial(service):
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/serial_port/"+str(0)    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/serial_ports/serial_port/"+str(0)
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     try:
         jstatus=json.loads(status.text)
     except:
         return 0
     serial_address=jstatus['serial_port']['service_port']
-    return serial_address            
+    return serial_address
 #Get VNIC Info
 def get_vnics(service):
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/vnics/"    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/vnics/"
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     jstatus=json.loads(status.text)
     qty_vnics=len(jstatus['vnics']['vnic'])
@@ -135,11 +135,11 @@ def get_vnics(service):
     while current_vnic < qty_vnics:
         show_vnic(service, current_vnic)
         current_vnic+=1
-    
-    
-    
+
+
+
 def show_vnic(service,nic):
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/vnics/vnic/"+str(nic)    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)+"/vnics/vnic/"+str(nic)
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     jstatus=json.loads(status.text)
     print "\nConfig for vnic: "+str(nic)
@@ -150,10 +150,10 @@ def show_vnic(service,nic):
         else:
             print str(each)+"\t"+str(jstatus['vnic'][str(each)])
     print "==============================="
-     
+
 #Display all info about a service
 def show_service(service):
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     jstatus=json.loads(status.text)
     print "Config for Server: "+service
@@ -167,10 +167,10 @@ def show_service(service):
             print str(each)+"\t\t"+str(jstatus['service'][str(each)])
         else:
             print str(each)+"\t"+str(jstatus['service'][str(each)])
-        
+
 #Display info about resources
 def show_resources():
-    csp_service_url="https://"+csp_host+"/api/running/resources/resource/csp-2100"    
+    csp_service_url="https://"+csp_host+"/api/running/resources/resource/csp-2100"
     status=requests.get(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False)
     jstatus=json.loads(status.text)
     server_ip=jstatus['resource']['ip_address']
@@ -185,7 +185,7 @@ def show_resources():
     print "Memory Total: "+str(memory_total)+"MB\tMemory Free: "+str(memory_avail)+"MB"
     print "Cores Total: "+str(cpus_total)+"\tCores Free: "+str(cpus_avail)
     print str(total_services) +" Services currently configured"
-    
+
 #Display the List of services on the CSP and the power status
 def list_services():
     show_resources()
@@ -199,19 +199,19 @@ def list_services():
             print str(each)+"\t->\t"+get_service_status(each)+"\t"+"Serial"+str(0)+" @ "+csp_host+":"+str(return_serial(each))
     print "\n"+str(len(plist)) +" Services currently listed"
     show_resources()
-        
-#power up a service        
+
+#power up a service
 def up_service(service):
     print "bringing up service "+str(service)
     payload = {"service": {"power": "on", }}
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)
     upping=requests.patch(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
     print "DONE \n"
 #Power down a service
 def down_service(service):
     print "bringing down service "+str(service)
     payload = {"service": {"power": "off", }}
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)
     downing=requests.patch(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
     print "DONE \n"
 
@@ -255,7 +255,7 @@ def set_vnic():
             chunk.append('{"nic": '+str(nic)+',"type":"'+each[0]+'","tagged":"true","vlan":"'+str(each[1])+'","network_name":"'+each[2]+'"},')
         nic+=1
     vnic ={"vnic": chunk}
-    
+
 
     return vnic
 
@@ -273,9 +273,9 @@ def find_free_port():
         else:
             print str(current_port)+" is free"
             return current_port
-    print " No TCP ports avail in range "+str(start_port)+"-"+str(start_port+100)    
-            
-        
+    print " No TCP ports avail in range "+str(start_port)+"-"+str(start_port+100)
+
+
 #Create a new service
 def create_service(service):
     if service not in plist:
@@ -296,11 +296,11 @@ def create_service(service):
     else:
         print "Service "+service+" already exists, NOTHING Created"
         return
-#Delete a service    
+#Delete a service
 def delete_service (service):
     print "deleting "+str(service)
     payload = {"service": {"power": "off", }}
-    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)    
+    csp_service_url="https://"+csp_host+"/api/running/services/service/"+str(service)
     downing=requests.patch(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
     sleep(2)
     deleting=requests.delete(csp_service_url, auth=HTTPBasicAuth(csp_user, csp_password), verify=False, json=payload, headers={'Content-type': 'application/vnd.yang.data+json'})
@@ -345,7 +345,7 @@ if options.adown:
             while servicenumber < totalservices+1:
                 if str(service)+str(servicenumber) in plist:
                     down_service(str(service)+str(servicenumber))
-                
+
                 else:
                     print "No service "+str(service)+str(servicenumber)+" to bring down."
                 servicenumber += 1
@@ -379,9 +379,9 @@ if options.adelete:
             print " NO ACTION TAKEN"
     else:
         print ("Nothing Deleted. That was close!")
-        
-#CHECK FOR CREATE ARG and if single, multiple (i.e. router1,router2,router3 using the -n arg)   
-if options.acreate:                
+
+#CHECK FOR CREATE ARG and if single, multiple (i.e. router1,router2,router3 using the -n arg)
+if options.acreate:
     if options.anumber:
         totalservices=int(options.anumber)
         servicenumber = 1
