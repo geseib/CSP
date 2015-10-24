@@ -1,9 +1,23 @@
 # CSP
-python scipts to automate common task on the Cisco Cloud serivces Platform
+python scripts to automate common task on the Cisco Cloud serivces Platform
 
-actcsp.py is the first swiss army knife script
+listcsp.py lists services and config info about a service
 
-some examples
+modcsp.py allows changing the TCP port used for Serial over TCP for a service
+
+pniccsp lists the physical NICs in the CSP server
+
+actcsp.py is the swiss army knife script
+
+
+some thing syou can do
+up.down a service or all serivices
+list services
+list info on a service
+create a service
+delete a service or all services
+
+some examples for actcsp
 
 #list the current services on the CSP
 actcsp.py -l
