@@ -261,6 +261,7 @@ def set_vnic():
 
 #find a free TCP port for the remote serial connection
 def find_free_port():
+    print "Finding free resources"
     start_port =my_starting_tcp_port
     current_port = start_port
     while current_port < start_port+100:
@@ -271,7 +272,7 @@ def find_free_port():
         if port_in_use==True:
             current_port +=1
         else:
-            print str(current_port)+" is free"
+            print "for Serial, TCP port "+str(current_port)+" is free"
             return current_port
     print " No TCP ports avail in range "+str(start_port)+"-"+str(start_port+100)
 
