@@ -18,11 +18,12 @@ logging.captureWarnings(True)
 from optparse import OptionParser
 
 #GLOBAL CSP Server VARIABLES. CHANGE THESE AS NEEDED
-my_csp_host="10.1.10.108"
+my_csp_host="10.90.16.41"
 my_csp_user="admin"
 my_csp_password="admin"
 my_starting_tcp_port=9000
-my_external_port="eno1"
+my_external_port="enp7s0f1"
+my_vnic_type="e1000"
 
 #Images to use - Change these as needed
 my_CSR_image="csr1000v-universalk9.03.16.00.S.155-3.S-ext.iso"
@@ -286,7 +287,7 @@ def create_service(service):
         iso,memory,cpus=get_service_profile()
         internal2=str(options.acreate)
         service_port=find_free_port()
-        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","vlan":"1","model":"virtio","network_name":my_external_port}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":"virtio","network_name":"Internal1"}]},"serial_ports":{"serial_port":[{"serial": 0,"serial_type":"telnet","service_port":service_port}]},}}
+        payload = {"service": {"disk_size": 4, "name": service, "power": "on", "iso_name": iso, "numcpu": cpus, "macid": 1, "memory": memory, "vnics": {"vnic": [{"nic": 0,"type":"access","tagged":"false","model":my_vnic_type,"network_name":my_external_port}, {"nic": 1,"type":"trunk","tagged":"true","native":"1","model":my_vnic_type,"network_name": internal2}, {"nic": 2,"type":"trunk","tagged":"true","native":"1","model":my_vnic_type,"network_name":"Internal1"}]},"serial_ports":{"serial_port":[{"serial": 0,"serial_type":"telnet","service_port":service_port}]},}}
         print "Creating Service: "+str(service)
         if options.adebug:
         	print "CSP URL: "+csp_service_url
